@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Simple script for splitting audio files into chunks of equal length with zero crossings.
-# Add to your bash. 
+# Simple script for splitting audio files into chunks of equal length with zero crossings. Requires ffmpeg
+# Add this script to your path and run from terminal.
 # example : 'segzc 1 0.001' segments any audio in current directory into 1 second chunks with 0.001 fade-in/fade-out into a new folder
 
 length=$1	;
