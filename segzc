@@ -1,0 +1,23 @@
+#!/bin/bash
+
+length=$1	;
+fadelen=$2	;
+fadeoutst=$(printf "%01.4f" $(echo "$length - $fadelen" | bc));
+
+
+if [ ! -d segmented ];
+	then mkdir -p segmented;
+	else echo folder exists;
+fi && for i in *.wav *.aif *.flac *.aiff
+
+do ffmpeg -i "$i" -f segment -segment_time $length "segmented/${i%*}%02d.wav"; 
+done;
+
+cd segmented;
+mkdir -p segzc;
+for i in *.wav;
+do ffmpeg -i "$i" -af "afade=t=in:st=0:d=$fadelen,afade=t=out:st=$fadeoutst:d=$fadelen" "segzc/${i%.*}_zc.wav"; done;
+
+mv segzc ../ ;
+cd ..;
+rm -r segmented
