@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# requires ffmpeg and ffprobe https://ffmpeg.org/
+# this script 1) divides by an arbitrary number of chunks with adjustable fade-in and fade-out
+#				2) recombines chunk in a random order
+# INSTRUCTIONS
+#
+# Create empty directory, put in files to process along with this script
+# Variables are : 	1. divideby : number of chunks to split into
+#					2. fadelen : zero-crossing fade expressed in seconds. default is 0.002
+# Examples:
+#  				./segrand 32			# split into 32 files, default fade length for each chunk
+#  				./segrand 16 0.01		# split into 16 files, 10 ms fade in/out
+
+#
+# ffmpeg seems to get weird with file length the smaller the segments get
+# supports WAV, AIF, AIFF and FLAC, but feel free add more audio formats
+
+divideby=$1	;
+fadelen="${2:-0.002}";
+
+if [ ! -d segmented ];
+	then mkdir -p segmented;
+	else echo folder exists;
+fi && for i in *.wav *.aif *.flac *.aiff
+
+do
+
+filext=${i##*.};
+filelen=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
+length=$(printf "%01.4f" $(echo "scale=6; $filelen / $divideby" | bc ));
+
+
+ ffmpeg -i "$i" -f segment -segment_time $length "segmented/${i%.*}_%02d.$filext"; 
+done;
+
+cd segmented;
+if [ ! -d ../segzc ];
+	then mkdir -p ../segzc;
+	else echo folder exists;
+fi && for i in *.wav *.aif *.flac *.aiff;
+do
+filext=${i##*.};
+seglength=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
+fadeoutst=$(printf "%01.4f" $(echo "$seglength - $fadelen" | bc));
+
+ ffmpeg -i "$i" -af "afade=t=in:st=0:d=$fadelen,afade=t=out:st=$fadeoutst:d=$fadelen" "../segzc/${i%.*}"_"$fadelen"_zc".$filext"; done;
+
+# This part assigns a random number as a prefix to every audio file in a directory
+
+cd ..
+cd segzc
+
+for i in *.wav *.aif *.flac *.aiff
+do
+    prefix=$(for num in {1}; do echo $(printf %05d $RANDOM); done)
+    filext=${i##*.}
+    mv $i "$prefix-${i%.*}.$filext"
+
+done
+
+### Below recombines the newly renamed files into a new one
+
+
+    shopt -s extglob
+    files=( *.@(aiff|aif|wav|flac) )
+    for f in "${files[@]}"
+    do echo file \'$f\'  >> list.txt
+done
+
+mergedext=$(
+    values=$(shopt -s extglob && files=( *.@(mp3|aif|wav) )
+            for f in "${files[@]}"
+            do echo ${f##*.}
+        done)
+
+        for i in ${values[@]}
+            do
+                [[ -z "${nvalues[$i]}" ]] && echo $i
+                    nvalues[$i]=$i
+            done)
+
+ffmpeg -f concat -safe 0 -i list.txt -c copy "../merged.$mergedext"
+rm list.txt
+
+cd ..;
+rm -r segmented
+rm -r segzc
+
+
