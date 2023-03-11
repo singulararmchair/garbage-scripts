@@ -69,7 +69,7 @@ done
 done
 
 mergedext=$(
-    values=$(shopt -s extglob && files=( *.@(mp3|aif|wav) )
+    values=$(shopt -s extglob && files=( *.@(aiff|aif|wav|flac) )
             for f in "${files[@]}"
             do echo ${f##*.}
         done)
