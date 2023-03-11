@@ -1,0 +1,36 @@
+#!/bin/bash
+
+# For use with ffmpeg segmenting script. All files must have same suffix or this won't work!
+# This part assigns a random number as a prefix to every audio file in a directory
+
+for i in *.wav *.aif *.flac *.aiff
+do
+    prefix=$(for num in {1}; do echo $(printf %05d $RANDOM); done)
+    filext=${i##*.}
+    mv $i "$prefix-${i%.*}.$filext"
+
+done
+
+### Below recombines the newly renamed files into a new one
+
+
+    shopt -s extglob
+    files=( *.@(aiff|aif|wav|flac) )
+    for f in "${files[@]}"
+    do echo file \'$f\'  >> list.txt
+done
+
+mergedext=$(
+    values=$(shopt -s extglob && files=( *.@(mp3|aif|wav) )
+            for f in "${files[@]}"
+            do echo ${f##*.}
+        done)
+
+        for i in ${values[@]}
+            do
+                [[ -z "${nvalues[$i]}" ]] && echo $i
+                    nvalues[$i]=$i
+            done)
+
+ffmpeg -f concat -safe 0 -i list.txt -c copy merged.$mergedext
+rm list.txt
