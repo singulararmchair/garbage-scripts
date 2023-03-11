@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# requires ffmpeg and ffprobe https://ffmpeg.org/
+# this script divides by an arbitrary number of chunks with adjustable fade-in and fade-out
+#
+# INSTRUCTIONS
+#
+# Create empty directory, put in files to process along with this script
+# Variables are : 	1. divideby : number of chunks to split into
+#					2. fadelen : zero-crossing fade expressed in seconds. default is 0.002
+# Examples:
+#  				./seg 32			# split into 32 files, default fade length
+#  				./seg 16 0.01		# split into 16 files, 10 ms fade in/out
+
+#
+# ffmpeg seems to get weird with file length the smaller the segments get
+# supports WAV, AIF, AIFF and FLAC, but feel free add more audio formats
+
+divideby=$1	;
+fadelen="${2:-0.002}";
+
+if [ ! -d segmented ];
+	then mkdir -p segmented;
+	else echo folder exists;
+fi && for i in *.wav *.aif *.flac *.aiff
+
+do
+
+filext=${i##*.};
+filelen=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
+length=$(printf "%01.4f" $(echo "scale=6; $filelen / $divideby" | bc ));
+
+
+ ffmpeg -i "$i" -f segment -segment_time $length "segmented/${i%.*}_%02d.$filext"; 
+done;
+
+cd segmented;
+if [ ! -d ../segzc ];
+	then mkdir -p ../segzc;
+	else echo folder exists;
+fi && for i in *.wav *.aif *.flac *.aiff;
+do
+filext=${i##*.};
+seglength=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
+fadeoutst=$(printf "%01.4f" $(echo "$seglength - $fadelen" | bc));
+
+ ffmpeg -i "$i" -af "afade=t=in:st=0:d=$fadelen,afade=t=out:st=$fadeoutst:d=$fadelen" "../segzc/${i%.*}"_"$fadelen"_zc".$filext"; done;
+cd ..;
+rm -r segmented
