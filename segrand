@@ -16,35 +16,36 @@
 # ffmpeg seems to get weird with file length the smaller the segments get
 # supports WAV, AIF, AIFF and FLAC, but feel free add more audio formats
 
-divideby=$1	;
-fadelen="${2:-0.002}";
+divideby=$1
+fadelen="${2:-0.001}"
+divstrlen=$(echo ${#divideby})
 
-if [ ! -d segmented ];
-	then mkdir -p segmented;
-	else echo folder exists;
+if [ ! -d segmented ]
+	then mkdir -p segmented
+	else echo folder exists
 fi && for i in *.wav *.aif *.flac *.aiff
 
 do
 
-filext=${i##*.};
-filelen=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
-length=$(printf "%01.4f" $(echo "scale=6; $filelen / $divideby" | bc ));
+filext=${i##*.}
+filelen=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0")
+length=$(printf "%01.4f" $(echo "scale=6; $filelen / $divideby" | bc ))
 
 
- ffmpeg -i "$i" -f segment -segment_time $length "segmented/${i%.*}_%02d.$filext"; 
-done;
+ ffmpeg -i "$i" -f segment -segment_time $length "segmented/${i%.*}_%02d.$filext"
+done
 
-cd segmented;
-if [ ! -d ../segzc ];
-	then mkdir -p ../segzc;
-	else echo folder exists;
-fi && for i in *.wav *.aif *.flac *.aiff;
+cd segmented
+if [ ! -d ../segzc ]
+	then mkdir -p ../segzc
+	else echo folder exists
+fi && for i in *.wav *.aif *.flac *.aiff
 do
-filext=${i##*.};
-seglength=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
-fadeoutst=$(printf "%01.4f" $(echo "$seglength - $fadelen" | bc));
+filext=${i##*.}
+seglength=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0")
+fadeoutst=$(printf "%01.4f" $(echo "$seglength - $fadelen" | bc))
 
- ffmpeg -i "$i" -af "afade=t=in:st=0:d=$fadelen,afade=t=out:st=$fadeoutst:d=$fadelen" "../segzc/${i%.*}"_"$fadelen"_zc".$filext"; done;
+ ffmpeg -i "$i" -af "afade=t=in:st=0:d=$fadelen,afade=t=out:st=$fadeoutst:d=$fadelen" "../segzc/${i%.*}"_"$fadelen"_zc".$filext"; done
 
 # This part assigns a random number as a prefix to every audio file in a directory
 
@@ -68,6 +69,18 @@ done
     do echo file \'$f\'  >> list.txt
 done
 
+mergedbase=$(
+    basevalue=$(shopt -s extglob && files=( *.@(aiff|aif|wav|flac) )
+            for f in "${files[@]}"
+            do echo  ${f:6: $[ ${#f}-19]-$divstrlen-1}
+        done)
+
+        for i in ${basevalue[@]}
+            do
+                [[ -z "${nbasevalue[$i]}" ]] && echo $i
+                    nbasevalue[$i]=$i
+            done)
+
 mergedext=$(
     values=$(shopt -s extglob && files=( *.@(aiff|aif|wav|flac) )
             for f in "${files[@]}"
@@ -80,10 +93,15 @@ mergedext=$(
                     nvalues[$i]=$i
             done)
 
-ffmpeg -f concat -safe 0 -i list.txt -c copy "../merged.$mergedext"
-rm list.txt
+count=1
+while [ -f "../merged/$mergedbase"_rnd"$divideby_${count}.$mergedext" ]; do
+  ((count++))
+done
 
-cd ..;
+
+ffmpeg -f concat -safe 0 -i list.txt -c copy "../merged/$mergedbase"_rnd"${count}.$mergedext"
+
+cd ..
 rm -r segmented
 rm -r segzc
 
