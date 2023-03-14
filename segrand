@@ -1,13 +1,14 @@
 #!/bin/bash
 
 # requires ffmpeg and ffprobe https://ffmpeg.org/
-# this script 1) divides by an arbitrary number of chunks with adjustable fade-in and fade-out
-#				2) recombines chunk in a random order
+# this script 	1) divides by an arbitrary number of chunks with adjustable fade-in and fade-out
+#		2) recombines chunks in a random order
+#
 # INSTRUCTIONS
 #
-# Create empty directory, put in files to process along with this script
+# Create empty directory, put in file to process along with this script
 # Variables are : 	1. divideby : number of chunks to split into
-#					2. fadelen : zero-crossing fade expressed in seconds. default is 0.002
+#			2. fadelen : zero-crossing fade expressed in seconds. default is 0.002
 # Examples:
 #  				./segrand 32			# split into 32 files, default fade length for each chunk
 #  				./segrand 16 0.01		# split into 16 files, 10 ms fade in/out
