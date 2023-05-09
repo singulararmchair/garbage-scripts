@@ -6,7 +6,7 @@
 #
 # INSTRUCTIONS
 #
-# Create empty directory, put in file to process along with this script
+# Create empty directory, put in ONE file to process along with this script
 # Variables are : 	1. divideby : number of chunks to split into
 #			2. fadelen : zero-crossing fade expressed in seconds. default is 0.002
 # Examples:
