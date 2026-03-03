@@ -1,23 +1,32 @@
 #!/bin/bash
 
-# requires ffmpeg and ffprobe https://ffmpeg.org/
-# this script divides by an arbitrary number of chunks with adjustable fade-in and fade-out
+# requires Sox 		https://sourceforge.net/projects/sox/
+# 		on macOS, install via: 	Homebrew (brew install sox) 
+#								Macports (port install sox)
+#
+# This script divides any audio file by an arbitrary number of chunks,
+# with adjustable fade duration and curve.
 #
 # INSTRUCTIONS
 #
-# Create empty directory, put in files to process along with this script
-# Variables are : 	1. divideby : number of chunks to split into
-#					2. fadelen : zero-crossing fade expressed in seconds. default is 0.002
+# Create empty directory, move files to process along with this script
+# Variables are : 	divideby : number of chunks to split into
+#					fadelen : zero-crossing fade 
+#							(In seconds, up to 3 decimal spots. The default is 0.001 s.)
+#					fadecurve : h (half sine), q (quarter sine; default), 
+#								l (logarithmic), p (inverted parabola), t (linear)
 # Examples:
-#  				./seg 32			# split into 32 files, default fade length
-#  				./seg 16 0.01		# split into 16 files, 10 ms fade in/out
+#  				./seg 32			: 32 files, 1 ms fade in/out, q curve
+#  				./seg 16 0.01		: 16 files, 10 ms fade in/out, q curve
+#  				./seg 16 0.002 t	: 16 files, 2 ms fade in/out, t curve
 
-#
-# ffmpeg seems to get weird with file length the smaller the segments get
-# supports WAV, AIF, AIFF and FLAC, but feel free add more audio formats
 
+filelen=$(for i in *.wav *.aif *.flac *.aiff
+	do soxi -D "$i";done);
 divideby=$1	;
-fadelen="${2:-0.002}";
+length=$(printf "%01.4f" $(echo "scale=6; $filelen / $divideby" | bc ));
+fadelen="${2:-0.001}";
+fadecurve="${3:-q}";
 
 if [ ! -d segmented ];
 	then mkdir -p segmented;
@@ -25,25 +34,20 @@ if [ ! -d segmented ];
 fi && for i in *.wav *.aif *.flac *.aiff
 
 do
-
-filext=${i##*.};
-filelen=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
-length=$(printf "%01.4f" $(echo "scale=6; $filelen / $divideby" | bc ));
-
-
- ffmpeg -i "$i" -f segment -segment_time $length "segmented/${i%.*}_%02d.$filext"; 
+sox "$i" "segmented/${i%*}" trim 0 $length : newfile : restart ;
 done;
 
 cd segmented;
+
+stoppos=$(printf $(echo "$(for i in *.wav *.aif *.flac *.aiff
+	do soxi -D "$i";done) - $fadelen" | bc));
+
 if [ ! -d ../segzc ];
 	then mkdir -p ../segzc;
 	else echo folder exists;
+
 fi && for i in *.wav *.aif *.flac *.aiff;
 do
-filext=${i##*.};
-seglength=$(ffprobe -i "$i" -show_entries format=duration -v quiet -of csv="p=0");
-fadeoutst=$(printf "%01.4f" $(echo "$seglength - $fadelen" | bc));
-
- ffmpeg -i "$i" -af "afade=t=in:st=0:d=$fadelen,afade=t=out:st=$fadeoutst:d=$fadelen" "../segzc/${i%.*}"_"$fadelen"_zc".$filext"; done;
+sox "$i" "../segzc/${i%.*}_zc.${i#*.}" fade $fadecurve $fadelen $stoppos $fadelen; done;
 cd ..;
 rm -r segmented
